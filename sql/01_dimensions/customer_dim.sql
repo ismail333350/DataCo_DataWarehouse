@@ -22,16 +22,31 @@ INSERT INTO warehouse.dim_customer (
     city, state, country, zipcode,
     effective_from, effective_to, is_current
 )
-SELECT DISTINCT
+SELECT
     customer_id,
-    customer_fname || ' ' || customer_lname,
-    customer_segment,
-    customer_city,
-    customer_state,
-    customer_country,
-    customer_zipcode::text,
-    '2015-01-01'::Date,
-    NULL ::Date,
+    customer_name,
+    segment,
+    city,
+    state,
+    country,
+    zipcode,
+    '2015-01-01'::date,
+    NULL::date,
     TRUE
-FROM staging.stg_orders
-WHERE customer_id IS NOT NULL;
+FROM (
+    SELECT
+        customer_id,
+        customer_fname || ' ' || customer_lname   AS customer_name,
+        customer_segment                           AS segment,
+        customer_city                              AS city,
+        customer_state                             AS state,
+        customer_country                           AS country,
+        customer_zipcode::text                     AS zipcode,
+        ROW_NUMBER() OVER (
+            PARTITION BY customer_id
+            ORDER BY order_date_dateorders DESC
+        ) AS rn
+    FROM staging.stg_orders
+    WHERE customer_id IS NOT NULL
+) ranked
+WHERE rn = 1;
